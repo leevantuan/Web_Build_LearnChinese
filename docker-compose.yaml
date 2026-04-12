@@ -12,6 +12,11 @@ services:
     image: postgres:16-alpine
     container_name: lc-postgres
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "10"
     environment:
       POSTGRES_DB: LearningChinese
       POSTGRES_USER: postgres
@@ -33,6 +38,11 @@ services:
       dockerfile: Dockerfile
     container_name: lc-backend
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "10"
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,6 +71,11 @@ services:
       dockerfile: Dockerfile
     container_name: lc-frontend
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       - backend
     ports:
@@ -73,6 +88,11 @@ services:
       dockerfile: Dockerfile
     container_name: lc-audio
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     ports:
       - "8888:8888"
     volumes:

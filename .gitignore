@@ -1,24 +1,13 @@
 # ============================================================
 # .gitignore cho Web_Build
+# Lưu ý: Giữ lại build output trong git vì sẽ clone về server để chạy
 # ============================================================
 
-# ── Build output (file build ra, không lưu vào git) ──
-frontend/build/
-backend/build/
-
-# ── Docker volumes & data ──
-postgres_data/
-audio_data/
-uploads_data/
-
-# ── Environment secrets ──
+# ── Environment secrets (chỉ ignore file .env thật, giữ .env.prod template) ──
 .env
 .env.local
-.env.production
 
-# ── SSL certificates ──
-certbot/
-letsencrypt/
+# ── SSL certificates (tạo trên server, không push lên git) ──
 *.pem
 *.key
 *.crt
@@ -28,15 +17,5 @@ Thumbs.db
 .DS_Store
 desktop.ini
 
-# ── IDE ──
-.idea/
-.vscode/
-*.swp
-*.swo
-
 # ── Logs ──
 *.log
-logs/
-
-# ── Docker build cache ──
-.docker/
