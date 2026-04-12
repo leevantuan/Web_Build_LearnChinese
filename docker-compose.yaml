@@ -1,0 +1,87 @@
+# ============================================================
+# LearningChinese - Docker Compose
+# ============================================================
+# Workflow:
+#   1. Build FE & BE trước (xem build.ps1)
+#   2. docker-compose up -d --build
+# ============================================================
+
+services:
+  # ── PostgreSQL Database ──
+  postgres:
+    image: postgres:16-alpine
+    container_name: lc-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: LearningChinese
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: LearningChinese@2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d LearningChinese"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend (.NET 9 API) ──
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lc-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__PostgresConnectionStrings: "Host=postgres;Port=5432;Database=LearningChinese;Username=postgres;Password=LearningChinese@2026;Trust Server Certificate=true"
+      AudioOptions__RootPath: /app/audio
+      AudioOptions__VocabulariesFolder: Vocabularies
+      AudioOptions__ExamplesFolder: Examples
+      AudioOptions__DefaultSpeed: "0.8"
+      AudioOptions__PythonExePath: python3
+      AudioOptions__MeloScriptPath: /audio-service/generate_mp3.py
+      Storage__RootPath: /app/uploads
+      ContactStorage__RootPath: /app/uploads/contacts
+    ports:
+      - "5154:8080"
+    volumes:
+      - audio_data:/app/audio
+      - uploads_data:/app/uploads
+
+  # ── Frontend (Angular + Nginx) ──
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: lc-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "4200:80"
+
+  # ── Audio Generation Service (MeloTTS) ──
+  audio:
+    build:
+      context: ../Audio_Melo/MeloTTS
+      dockerfile: Dockerfile
+    container_name: lc-audio
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    volumes:
+      - audio_data:/app/audio
+
+volumes:
+  postgres_data:
+    driver: local
+  audio_data:
+    driver: local
+  uploads_data:
+    driver: local

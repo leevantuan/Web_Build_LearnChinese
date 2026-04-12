@@ -1,0 +1,42 @@
+# ============================================================
+# .gitignore cho Web_Build
+# ============================================================
+
+# ── Build output (file build ra, không lưu vào git) ──
+frontend/build/
+backend/build/
+
+# ── Docker volumes & data ──
+postgres_data/
+audio_data/
+uploads_data/
+
+# ── Environment secrets ──
+.env
+.env.local
+.env.production
+
+# ── SSL certificates ──
+certbot/
+letsencrypt/
+*.pem
+*.key
+*.crt
+
+# ── OS files ──
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# ── IDE ──
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── Logs ──
+*.log
+logs/
+
+# ── Docker build cache ──
+.docker/
