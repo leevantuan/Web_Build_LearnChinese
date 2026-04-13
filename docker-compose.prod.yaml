@@ -72,16 +72,16 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - certbot_conf:/etc/letsencrypt
-      - certbot_www:/var/www/certbot
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/www/certbot:/var/www/certbot
 
   # ── Certbot — Tự động renew SSL ──
   certbot:
     image: certbot/certbot:latest
     container_name: lc-certbot
     volumes:
-      - certbot_conf:/etc/letsencrypt
-      - certbot_www:/var/www/certbot
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/www/certbot:/var/www/certbot
     # Tự động renew mỗi 12 tiếng
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
@@ -92,7 +92,4 @@ networks:
 volumes:
   postgres_data:
     driver: local
-  certbot_conf:
-    driver: local
-  certbot_www:
-    driver: local
+
