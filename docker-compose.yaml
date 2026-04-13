@@ -47,15 +47,14 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_ENVIRONMENT: Docker
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__PostgresConnectionStrings: "Host=postgres;Port=5432;Database=LearningChinese;Username=postgres;Password=LearningChinese@2026;Trust Server Certificate=true"
       AudioOptions__RootPath: /app/audio
       AudioOptions__VocabulariesFolder: Vocabularies
       AudioOptions__ExamplesFolder: Examples
       AudioOptions__DefaultSpeed: "0.8"
-      AudioOptions__PythonExePath: python3
-      AudioOptions__MeloScriptPath: /audio-service/generate_mp3.py
+      AudioOptions__AudioServiceUrl: http://audio:8888
       Storage__RootPath: /app/uploads
       ContactStorage__RootPath: /app/uploads/contacts
     ports:

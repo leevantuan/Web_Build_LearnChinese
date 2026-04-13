@@ -12,7 +12,7 @@ COPY build/ .
 # Create volume mount points
 RUN mkdir -p /app/audio /app/uploads
 
-ENV ASPNETCORE_ENVIRONMENT=Production
+ENV ASPNETCORE_ENVIRONMENT=Docker
 ENV ASPNETCORE_URLS=http://+:8080
 
 EXPOSE 8080

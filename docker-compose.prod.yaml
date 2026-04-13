@@ -48,15 +48,14 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_ENVIRONMENT: Docker
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__PostgresConnectionStrings: "Host=postgres;Port=5432;Database=LearningChinese;Username=postgres;Password=${DB_PASSWORD:-LearningChinese@2026};Trust Server Certificate=true"
       AudioOptions__RootPath: /app/audio
       AudioOptions__VocabulariesFolder: Vocabularies
       AudioOptions__ExamplesFolder: Examples
       AudioOptions__DefaultSpeed: "0.8"
-      AudioOptions__PythonExePath: python3
-      AudioOptions__MeloScriptPath: /audio-service/generate_mp3.py
+      AudioOptions__AudioServiceUrl: http://audio:8888
       Storage__RootPath: /app/uploads
       ContactStorage__RootPath: /app/uploads/contacts
     # Không expose port ra ngoài — chỉ truy cập qua nginx
@@ -98,7 +97,7 @@ services:
   # ── Audio Generation Service (MeloTTS) ──
   audio:
     build:
-      context: ../Audio_Melo/MeloTTS
+      context: ./audio
       dockerfile: Dockerfile
     container_name: lc-audio
     restart: unless-stopped
@@ -110,6 +109,10 @@ services:
     # Không expose port ra ngoài
     volumes:
       - audio_data:/app/audio
+
+networks:
+  lc-network:
+    driver: bridge
 
 volumes:
   postgres_data:

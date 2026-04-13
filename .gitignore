@@ -19,3 +19,8 @@ desktop.ini
 
 # ── Logs ──
 *.log
+
+# ── Python cache (audio service) ──
+__pycache__/
+*.pyc
+*.egg-info/
