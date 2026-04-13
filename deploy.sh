@@ -1,10 +1,10 @@
 #!/bin/bash
 # ============================================================
 # LearningChinese - Deploy Script cho Ubuntu Server
-# Domain: learnzh.website | IP: 103.149.87.43
+# Domain: learnzh.website
 # ============================================================
 # Cach dung:
-#   1. Upload folder Web_Build len server
+#   1. git clone repo Web_Build len server
 #   2. chmod +x deploy.sh
 #   3. sudo ./deploy.sh
 # ============================================================
@@ -21,21 +21,21 @@ echo "  Domain: $DOMAIN"
 echo "============================================"
 echo ""
 
-# ── Buoc 1: Cai dat Docker (neu chua co) ──
-echo "[1/5] Kiem tra Docker..."
+# ── Buoc 1: Kiem tra Docker ──
+echo "[1/6] Kiem tra Docker..."
 if ! command -v docker &> /dev/null; then
     echo ">> Dang cai dat Docker..."
     curl -fsSL https://get.docker.com | sh
     sudo usermod -aG docker $USER
-    echo ">> Docker da cai xong. Hay logout va login lai de apply group."
+    echo ">> Docker da cai xong."
 else
     echo ">> Docker da co san: $(docker --version)"
 fi
 
-# ── Buoc 2: Cai dat Docker Compose plugin (neu chua co) ──
+# ── Buoc 2: Kiem tra Docker Compose ──
 echo ""
-echo "[2/5] Kiem tra Docker Compose..."
-if ! docker compose version &> /dev/null; then
+echo "[2/6] Kiem tra Docker Compose..."
+if ! docker compose version &> /dev/null 2>&1; then
     echo ">> Dang cai dat Docker Compose plugin..."
     sudo apt-get update
     sudo apt-get install -y docker-compose-plugin
@@ -43,15 +43,54 @@ else
     echo ">> Docker Compose da co san: $(docker compose version)"
 fi
 
-# ── Buoc 3: Tao SSL bang Let's Encrypt (lan dau) ──
+# ── Buoc 3: Tat Nginx host neu dang chay (tranh conflict port 80/443) ──
 echo ""
-echo "[3/5] Kiem tra SSL certificate..."
+echo "[3/6] Kiem tra Nginx tren host..."
+if systemctl is-active --quiet nginx 2>/dev/null; then
+    echo ">> Nginx dang chay tren host. Dang tat..."
+    systemctl stop nginx
+    systemctl disable nginx
+    echo ">> Da tat Nginx host (Docker se thay the)."
+elif command -v nginx &> /dev/null; then
+    echo ">> Nginx da cai nhung khong chay. OK."
+else
+    echo ">> Khong co Nginx tren host. OK."
+fi
+
+# Kiem tra port 80 co dang bi chiem khong
+if ss -tlnp | grep -q ':80 ' 2>/dev/null; then
+    echo ">> CANH BAO: Port 80 van dang bi chiem boi:"
+    ss -tlnp | grep ':80 '
+    echo ">> Dang thu tat..."
+    fuser -k 80/tcp 2>/dev/null || true
+    sleep 2
+fi
+
+# ── Buoc 4: Tao SSL bang Let's Encrypt (lan dau) ──
+echo ""
+echo "[4/6] Kiem tra SSL certificate..."
 if [ ! -d "/etc/letsencrypt/live/$DOMAIN" ]; then
     echo ">> Chua co SSL. Bat dau tao certificate..."
     echo ""
-    echo ">> Buoc 3a: Khoi dong Nginx tam thoi (chi HTTP)..."
 
-    # Tao nginx config tam thoi (chi HTTP, khong SSL)
+    # Kiem tra DNS truoc khi lay SSL
+    echo ">> Kiem tra DNS $DOMAIN..."
+    RESOLVED_IP=$(dig +short "$DOMAIN" 2>/dev/null | head -1)
+    SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || curl -s icanhazip.com 2>/dev/null)
+    echo "   DNS tro ve: $RESOLVED_IP"
+    echo "   IP server:  $SERVER_IP"
+    if [ "$RESOLVED_IP" != "$SERVER_IP" ] && [ -n "$SERVER_IP" ] && [ -n "$RESOLVED_IP" ]; then
+        echo ">> CANH BAO: DNS chua tro dung ve server nay!"
+        echo "   Certbot co the that bai. Tiep tuc thu..."
+    fi
+
+    echo ""
+    echo ">> Buoc 4a: Khoi dong Nginx tam thoi (chi HTTP)..."
+
+    # Xoa container cu neu con sot
+    docker rm -f lc-nginx-temp 2>/dev/null || true
+
+    # Tao nginx config tam thoi
     mkdir -p /tmp/lc-certbot
     cat > /tmp/lc-nginx-temp.conf << 'NGINX_TEMP'
 server {
@@ -78,7 +117,7 @@ NGINX_TEMP
 
     sleep 3
 
-    echo ">> Buoc 3b: Chay Certbot de lay SSL certificate..."
+    echo ">> Buoc 4b: Chay Certbot de lay SSL certificate..."
     docker run --rm \
         -v /etc/letsencrypt:/etc/letsencrypt \
         -v /tmp/lc-certbot:/var/www/certbot \
@@ -100,9 +139,9 @@ else
     echo ">> SSL certificate da ton tai."
 fi
 
-# ── Buoc 4: Copy .env ──
+# ── Buoc 5: Copy .env ──
 echo ""
-echo "[4/5] Cau hinh environment..."
+echo "[5/6] Cau hinh environment..."
 if [ -f ".env.prod" ]; then
     cp .env.prod .env
     echo ">> Da copy .env.prod -> .env"
@@ -110,9 +149,11 @@ else
     echo ">> CANH BAO: Khong tim thay .env.prod. Dung gia tri mac dinh."
 fi
 
-# ── Buoc 5: Build va chay Docker ──
+# ── Buoc 6: Build va chay Docker ──
 echo ""
-echo "[5/5] Build va khoi dong tat ca services..."
+echo "[6/6] Build va khoi dong tat ca services..."
+echo ">> Lan dau se mat 10-20 phut (download images + build audio)..."
+echo ""
 docker compose -f docker-compose.prod.yaml up -d --build
 
 echo ""
