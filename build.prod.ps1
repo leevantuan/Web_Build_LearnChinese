@@ -122,7 +122,6 @@ Write-Host ""
 Write-Host "  Cau truc Web_Build:" -ForegroundColor White
 Write-Host '    frontend/build/  - Angular production output' -ForegroundColor Gray
 Write-Host '    backend/build/   - .NET publish output' -ForegroundColor Gray
-Write-Host '    audio_files/     - Thu muc chua audio files (dat thu cong)' -ForegroundColor Gray
 Write-Host ""
 Write-Host "  Buoc tiep theo:" -ForegroundColor White
 Write-Host "  1. Upload Web_Build len server:" -ForegroundColor Gray

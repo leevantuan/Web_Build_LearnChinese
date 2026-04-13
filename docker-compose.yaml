@@ -46,21 +46,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - ./audio_files:/app/audio_files
     environment:
       ASPNETCORE_ENVIRONMENT: Docker
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__PostgresConnectionStrings: "Host=postgres;Port=5432;Database=LearningChinese;Username=postgres;Password=LearningChinese@2026;Trust Server Certificate=true"
-      AudioOptions__RootPath: /app/audio
-      AudioOptions__VocabulariesFolder: Vocabularies
-      AudioOptions__ExamplesFolder: Examples
-      AudioOptions__DefaultSpeed: "0.8"
-      Storage__RootPath: /app/uploads
-      ContactStorage__RootPath: /app/uploads/contacts
     ports:
       - "5154:8080"
-    volumes:
-      - audio_data:/app/audio
-      - uploads_data:/app/uploads
 
   # ── Frontend (Angular + Nginx) ──
   frontend:
@@ -81,8 +74,4 @@ services:
 
 volumes:
   postgres_data:
-    driver: local
-  audio_data:
-    driver: local
-  uploads_data:
     driver: local

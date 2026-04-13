@@ -47,20 +47,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - ./audio_files:/app/audio_files
     environment:
       ASPNETCORE_ENVIRONMENT: Docker
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__PostgresConnectionStrings: "Host=postgres;Port=5432;Database=LearningChinese;Username=postgres;Password=${DB_PASSWORD:-LearningChinese@2026};Trust Server Certificate=true"
-      AudioOptions__RootPath: /app/audio
-      AudioOptions__VocabulariesFolder: Vocabularies
-      AudioOptions__ExamplesFolder: Examples
-      AudioOptions__DefaultSpeed: "0.8"
-      Storage__RootPath: /app/uploads
-      ContactStorage__RootPath: /app/uploads/contacts
-    # Không expose port ra ngoài — chỉ truy cập qua nginx
-    volumes:
-      - audio_data:/app/audio
-      - uploads_data:/app/uploads
 
   # ── Frontend (Angular + Nginx + SSL) ──
   frontend:
@@ -99,10 +91,6 @@ networks:
 
 volumes:
   postgres_data:
-    driver: local
-  audio_data:
-    driver: local
-  uploads_data:
     driver: local
   certbot_conf:
     driver: local

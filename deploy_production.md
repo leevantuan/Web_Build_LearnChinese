@@ -1,304 +1,175 @@
-# 🚀 Hướng dẫn Deploy Production - learnzh.website
+# 🚀 Hướng Dẫn Deploy Dự Án LearningChinese (Docker)
 
-## 📋 Yêu cầu
-
-### Server Ubuntu
-
-| Yêu cầu | Tối thiểu                                 |
-| ------- | ----------------------------------------- |
-| OS      | Ubuntu 22.04+                             |
-| RAM     | 4GB+ (MeloTTS cần ~2GB)                   |
-| Disk    | 20GB+                                     |
-| Port    | 80, 443 mở                                |
-| Domain  | learnzh.website trỏ A record về IP server |
-
-### Đã cài sẵn trên server
-
-- ✅ Docker + Docker Compose
-- ✅ Nginx (Docker sẽ dùng, không cần trên host)
-- ✅ Git
+Hệ thống **LearningChinese** mang thiết kế Clean Architecture siêu nhẹ (Chỉ dùng .NET 9 & Angular 18, Audio được generate trực tiếp từ trình duyệt Client bằng Web Speech API). Việc này giúp hệ thống tiết kiệm cực nhiều tài nguyên và có thể scale rất dễ dàng qua Docker.
 
 ---
 
-## 🔄 Tổng quan workflow
+## 📋 1. Yêu Cầu Cấu Hình Máy Chủ (Production)
 
-```
-┌─────────────────────────────────┐
-│  Windows (máy dev)              │
-│                                 │
-│  1. build.prod.ps1              │
-│     ├── ng build → frontend/    │
-│     ├── dotnet publish → backend│
-│     └── copy MeloTTS → audio/   │
-│                                 │
-│  2. git push                    │
-└──────────────┬──────────────────┘
-               │
-               ▼
-┌─────────────────────────────────┐
-│  Ubuntu Server                  │
-│                                 │
-│  3. git clone / git pull        │
-│  4. deploy.sh (tự động tất cả) │
-│                                 │
-│  → https://learnzh.website ✅   │
-└─────────────────────────────────┘
-```
+Vì hệ thống không còn gánh dịch vụ Audio AI Model (MeloTTS) lỗi thời, cấu hình yêu cầu hiện tại cực kỳ nhẹ nhàng:
+
+| Resource            | Tối Thiểu     | Đề Nghị (Production) | Căn Cứ Lựa Chọn                             |
+| ------------------- | ------------- | -------------------- | ------------------------------------------- |
+| **Hệ Điều Hành**    | Ubuntu 22.04+ | Ubuntu 24.04 LTS     | Standard Docker Environment                 |
+| **RAM**             | 1 GB          | 2 GB                 | .NET 9 Minimal APIs tốn rất ít RAM (<150MB) |
+| **Storage (Disk)**  | 10 GB         | 20 GB                | Rất nhẹ, File Audio không lưu lại trên HD!  |
+| **Port / Firewall** | 80, 443, 22   | Ưu tiên mở Firewall  | Certbot & Web App chạy Ingress SSL          |
+
+_Tại Server đã cần cài đặt sẵn: `Docker`, `Docker Compose`, `Git`._
 
 ---
 
-## 📁 Cấu trúc Web_Build sau khi build
+## 🏗️ 2. Mô Hình Triển Khai (Workflow)
 
+```mermaid
+flowchart TD
+    A[MÁY DEV (Windows)] -->|Step 1: Run build.prod.ps1| B(Compile tĩnh FE/BE)
+    B -->|Step 2: Git Commit & Push| C{Github / Gitlab}
+    C -->|Step 3: Server Git Pull| D[SERVER (Ubuntu)]
+    D -->|Step 4: deploy.sh| E[(Docker Compose Build)]
+    E --> F[HTTPS Server Live!]
 ```
-Web_Build/
-├── docker-compose.prod.yaml     ← Docker compose cho production
-├── .env.prod                    ← Biến môi trường (DB password, domain)
-├── deploy.sh                    ← Script tự động deploy
-├── build.ps1                    ← Build cho local dev (Windows)
-├── build.prod.ps1               ← Build cho production (Windows → Server)
-├── frontend/
-│   ├── Dockerfile.prod          ← Nginx + SSL
-│   ├── nginx.prod.conf          ← Nginx config production
-│   └── build/                   ← ⭐ Angular output (do build.prod.ps1 tạo)
-├── backend/
-│   ├── Dockerfile               ← .NET runtime
-│   └── build/                   ← ⭐ .NET publish output (do build.prod.ps1 tạo)
-└── audio/
-    ├── Dockerfile               ← Python + MeloTTS
-    ├── .dockerignore
-    ├── setup.py                 ← ⭐ MeloTTS source (do build.prod.ps1 copy)
-    ├── melo/                    ← ⭐ MeloTTS source
-    └── ...
-```
+
+- **Máy tính Dev (Windows):** Đảm nhiệm việc tải Package (`npm`, `nuget`) và dịch mã nguồn ra thành HTML/JS và DLL .NET. Không ném rác NodeModules hay dư thừa lên Server.
+- **Server Ubuntu:** Chỉ nhận file đã dịch/Release rút gọn, chạy `.Dockerfile` tĩnh cực nhanh và gắn Postgres Database.
 
 ---
 
-## 🛠️ TỪNG BƯỚC CHI TIẾT
+## 🔄 3. Hướng Dẫn Chạy Môi Trường DEV / Local
+
+Bạn đang ở nhà, test tính năng mới xong mún giả lập hệ thống Docker Backend/Frontend trên máy cá nhân? Rất đơn giản:
+
+1. **Build mã nguồn cho Local:** Di chuyển tới thư mục `Web_Build`, khởi chạy script PowerShell build ngầm dành riêng cho dev:
+
+```powershell
+cd D:\Persional\LearningChinese\Web_Build
+powershell -ExecutionPolicy Bypass -File build.ps1
+```
+
+_(Cục build rỗng sẽ được thả vào thư mục build ảo)_
+
+2. **Khởi Động Docker Container Local:**
+
+```bash
+docker compose -f docker-compose.yaml up -d --build
+```
+
+Hệ thống Frontend & Backend + Local Postgres sẽ được nâng lên ngay lập tức tại Localhost của bạn. Ngừng test: `docker compose down`.
 
 ---
 
-### BƯỚC 1 — Build trên Windows (máy dev)
+## ☁️ 4. Hướng Dẫn Deploy PRODUCTION Lên Server
 
-Mở PowerShell, chạy:
+Quy trình Deploy bản mới ra Internet cho User trải nghiệm (Đòi hỏi HTTPS trỏ Domain):
+
+### BƯỚC A: Build tĩnh tại Local (Windows)
+
+Đứng tại thư mục `Web_Build` (Nơi cấu hình chứa các file Docker Prod), gọi lệnh Script:
 
 ```powershell
 cd D:\Persional\LearningChinese\Web_Build
 powershell -ExecutionPolicy Bypass -File build.prod.ps1
 ```
 
-Script sẽ tự động:
+_Script sẽ tự động quét, Build Angular Production (AOT), Publish .NET (Release) và quăng file gọn lỏn vào `Web_Build/frontend/build` và `Web_Build/backend/build`._
 
-1. Build Angular (production) → `frontend/build/`
-2. Build .NET (Release) → `backend/build/`
-3. Copy MeloTTS source → `audio/`
-4. Kiểm tra tất cả file config
-
----
-
-### BƯỚC 2 — Push lên Git
+### BƯỚC B: Gói ghém, Đẩy lên Git
 
 ```powershell
-cd D:\Persional\LearningChinese\Web_Build
 git add -A
-git commit -m "Production build $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+git commit -m "🔖 Release Bản Mới $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
 git push origin main
 ```
 
-> ⚠️ Build output (~50MB+) sẽ được push lên git. Đảm bảo repo hỗ trợ file lớn.
+### BƯỚC C: Kéo & Kích hoạt siêu tốc tại Server
 
----
-
-### BƯỚC 3 — SSH vào Server
+Mở terminal kết nối SSH vào máy chủ Ubuntu:
 
 ```bash
-ssh root@<IP_SERVER>
+# 1. Kéo Source Code mới nhất
+cd /opt/learnchinese/Web_Build
+git pull origin main
 ```
 
----
+**(QUAN TRỌNG):** Kể từ bản cập nhật mới, Server bị cắt giảm chức năng tự tạo file mp3 để tiết kiệm bộ nhớ. Do đó, bạn cần phải Tự chép thư mục `audio_files` từ Local của bạn lên Server, nằm ngang hàng với file `docker-compose.prod.yaml`.
 
-### BƯỚC 4 — Clone repo (LẦN ĐẦU TIÊN)
+```text
+/opt/learnchinese/Web_Build
+  ├── deploy.sh
+  ├── docker-compose.prod.yaml
+  ├── audio_files/          <-- CHÉP VÀO ĐÂY (Dùng FTP / FileZilla)
+  │    ├── vocabularies/
+  │    └── examples/
+  ...
+```
+
+Sau khi chép xong file (hoặc không có file cũng không sao, tự Fallback sang Google TTS), tiến hành chạy lệnh kích hoạt:
 
 ```bash
-# Tạo thư mục
+# 2. Cấp quyền thực thi và chạy kịch bản deploy
+chmod +x deploy.sh
+./deploy.sh
+```
+
+> Lúc này do cấu trúc mới đã loại bỏ MeloTTS, Server chỉ mất chưa tới **1 -> 2 Phút** để nâng cấp thay vì chờ tải hàng GB Models cài đặt Python như ngày xưa!
+
+---
+
+## 🔑 5. Cấu Hình Bảo Mật Ban Đầu (Setup SSL & Database)
+
+**Lưu ý:** Nếu là lần khởi chạy Server ĐẦU TIÊN (Mới mua Cloud), hãy set up những thứ này:
+
+```bash
+# 1. SSH Server, tạo thư mục và Clone (nếu chưa có)
 mkdir -p /opt/learnchinese
 cd /opt/learnchinese
-
-# Clone repo
-git clone <URL_REPO_WEB_BUILD> Web_Build
+git clone <URL_REPO> Web_Build
 cd Web_Build
-```
 
-> Nếu đã clone rồi, chỉ cần pull:
->
-> ```bash
-> cd /opt/learnchinese/Web_Build
-> git pull origin main
-> ```
-
----
-
-### BƯỚC 5 — Cấu hình environment
-
-```bash
-# Sửa password database (quan trọng!)
+# 2. Cài đặt Password DB & Domain môi trường Sản phẩm
 nano .env.prod
 ```
 
-File `.env.prod`:
+Nội dung file `.env.prod`:
 
 ```env
-DB_PASSWORD=<ĐỔI_MẬT_KHẨU_MẠNH>
+DB_PASSWORD=<MẬT_KHẨU_DÀI_BÍ_MẬT>
 DOMAIN=learnzh.website
 EMAIL=admin@learnzh.website
 ```
 
----
-
-### BƯỚC 6 — Chạy Deploy
+Dùng công cụ setup chứng chỉ số Tự động All-in-One:
 
 ```bash
 chmod +x deploy.sh
 sudo ./deploy.sh
 ```
 
-Script `deploy.sh` sẽ **tự động** thực hiện:
-
-| Bước | Hành động                                                  |
-| ---- | ---------------------------------------------------------- |
-| 1/5  | Kiểm tra Docker (skip nếu đã có)                           |
-| 2/5  | Kiểm tra Docker Compose (skip nếu đã có)                   |
-| 3/5  | Tạo SSL certificate qua Let's Encrypt (skip nếu đã có)     |
-| 4/5  | Copy `.env.prod` → `.env`                                  |
-| 5/5  | `docker compose -f docker-compose.prod.yaml up -d --build` |
-
-⏱️ Lần đầu chạy mất **10-20 phút** (build Docker images + download MeloTTS models).
-Các lần sau chỉ mất **1-2 phút**.
+_Lệnh này sẽ cài NGINX, xin Certbot SSL cho tên miền, Map SSL Key bằng Let's Encrypts vô cùng mạnh mẽ vào Nginx Config (Tất cả tự động)._
 
 ---
 
-### BƯỚC 7 — Kiểm tra
+## ❓ 6. Khắc Phục Lỗi (Troubleshoot)
+
+- **Xem hệ thống đang có khỏe không:**
 
 ```bash
-# Xem trạng thái containers
 docker compose -f docker-compose.prod.yaml ps
-
-# Kết quả mong đợi:
-# lc-postgres   ✅ running (healthy)
-# lc-backend    ✅ running
-# lc-frontend   ✅ running
-# lc-audio      ✅ running
-# lc-certbot    ✅ running
+# Mong đợi: lc-postgres (Healthy), lc-backend (Up), lc-frontend (Up)...
 ```
+
+- **Cháy / Sập CSDL & Muốn dọn sạch làm lại:**
+  _(Lệnh này XÓA DỮ LIỆU)_
 
 ```bash
-# Test HTTPS
-curl -I https://learnzh.website
-
-# Xem logs nếu có lỗi
-docker compose -f docker-compose.prod.yaml logs -f backend
-docker compose -f docker-compose.prod.yaml logs -f frontend
+docker compose -f docker-compose.prod.yaml down
+docker volume prune -f
+docker compose -f docker-compose.prod.yaml up -d --build
 ```
 
-Truy cập:
-
-- 🌐 Web: **https://learnzh.website**
-- 📡 API: **https://learnzh.website/api/v1/**
-- 📖 Swagger: **https://learnzh.website/swagger**
-
----
-
-## 🔄 CẬP NHẬT CODE MỚI (các lần sau)
-
-### Trên Windows:
-
-```powershell
-cd D:\Persional\LearningChinese\Web_Build
-powershell -ExecutionPolicy Bypass -File build.prod.ps1
-git add -A
-git commit -m "Update $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
-git push origin main
-```
-
-### Trên Server:
-
-```bash
-cd /opt/learnchinese/Web_Build
-git pull origin main
-docker compose -f docker-compose.prod.yaml up -d --build frontend backend
-```
-
-> 💡 Nếu chỉ update FE/BE, không cần rebuild audio (mất lâu):
->
-> ```bash
-> docker compose -f docker-compose.prod.yaml up -d --build frontend backend
-> ```
->
-> Nếu update cả audio:
->
-> ```bash
-> docker compose -f docker-compose.prod.yaml up -d --build
-> ```
-
----
-
-## 🔒 Setup Firewall (khuyến nghị)
-
-```bash
-sudo ufw allow 22/tcp    # SSH
-sudo ufw allow 80/tcp    # HTTP (redirect → HTTPS)
-sudo ufw allow 443/tcp   # HTTPS
-sudo ufw enable
-```
-
----
-
-## 🔑 DNS — Cấu hình domain
-
-Tại nhà cung cấp domain, thêm các record:
-
-| Tên | Loại  | Giá trị         |
-| --- | ----- | --------------- |
-| @   | A     | `<IP_SERVER>`   |
-| www | CNAME | learnzh.website |
-
-> DNS cần propagate 5-30 phút. Kiểm tra bằng: `dig learnzh.website`
-
----
-
-## ❓ Troubleshoot
-
-### SSL không tạo được?
-
-```bash
-# Kiểm tra port 80 mở chưa
-sudo ufw status
-# Kiểm tra DNS đã trỏ đúng
-dig learnzh.website
-# Xem logs certbot
-docker logs lc-certbot
-```
-
-### Backend lỗi kết nối database?
-
-```bash
-# Kiểm tra postgres đã healthy chưa
-docker compose -f docker-compose.prod.yaml ps postgres
-# Xem logs
-docker compose -f docker-compose.prod.yaml logs backend
-```
-
-### Renew SSL thủ công?
+- **Gia hạn Chứng Chỉ Số (Nếu hết hạn 90 ngày):**
 
 ```bash
 docker compose -f docker-compose.prod.yaml run --rm certbot renew
 docker compose -f docker-compose.prod.yaml restart frontend
-```
-
-### Xóa sạch và deploy lại?
-
-```bash
-docker compose -f docker-compose.prod.yaml down
-# ⚠️ Lệnh dưới sẽ XÓA database! Cẩn thận!
-# docker volume rm $(docker volume ls -q --filter name=web_build_)
-docker compose -f docker-compose.prod.yaml up -d --build
 ```
