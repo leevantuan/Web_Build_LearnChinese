@@ -1,13 +1,11 @@
 # ============================================================
-# build.prod.ps1 - Build FE & BE & Audio cho Production (Ubuntu Docker)
+# build.prod.ps1 - Build FE & BE cho Production (Ubuntu Docker)
 # Chay: powershell -ExecutionPolicy Bypass -File build.prod.ps1
 # ============================================================
-# Khac voi build.ps1 (local):
-#   - Build FE voi configuration=production (environment.ts)
-#   - Build BE voi EnvironmentName=Docker (dung appsettings.Docker.json)
-#   - Copy source MeloTTS vao Web_Build/audio/ (Python khong can build)
-#   - Kiem tra output truoc khi bat dau
-#   - Hien thi huong dan upload len server
+# - Build FE voi configuration=production (environment.ts)
+# - Build BE voi EnvironmentName=Docker (dung appsettings.Docker.json)
+# - Kiem tra output truoc khi bat dau
+# - Hien thi huong dan upload len server
 # ============================================================
 
 $ErrorActionPreference = "Stop"
@@ -32,7 +30,7 @@ $startTime = Get-Date
 
 # == 1. Build Frontend (Angular) ==
 Write-Host "" -ForegroundColor Yellow
-Write-Host "[1/4] Building Frontend (Angular - production)..." -ForegroundColor Yellow
+Write-Host "[1/3] Building Frontend (Angular - production)..." -ForegroundColor Yellow
 $feSrc   = "$ROOT\LearningChinese_FE"
 $feBuild = "$ROOT\Web_Build\frontend\build"
 
@@ -56,7 +54,7 @@ Write-Host "  => FE build OK: $feBuild ($feFiles files)" -ForegroundColor Green
 
 # == 2. Build Backend (.NET 9) ==
 Write-Host "" -ForegroundColor Yellow
-Write-Host "[2/4] Building Backend (.NET 9 - Release)..." -ForegroundColor Yellow
+Write-Host "[2/3] Building Backend (.NET 9 - Release)..." -ForegroundColor Yellow
 $beSrc   = "$ROOT\LearningChinese_BE"
 $beBuild = "$ROOT\Web_Build\backend\build"
 
@@ -75,56 +73,9 @@ $hasDll  = Test-Path "$beBuild\LearningChinese.API.dll"
 if (-not $hasDll) { Write-Error "KHONG TIM THAY LearningChinese.API.dll!"; exit 1 }
 Write-Host "  => BE build OK: $beBuild ($beFiles files)" -ForegroundColor Green
 
-# == 3. Copy Audio source (MeloTTS — Python, khong can build) ==
+# == 3. Kiem tra cac file config can thiet ==
 Write-Host "" -ForegroundColor Yellow
-Write-Host "[3/4] Copying MeloTTS source vao Web_Build/audio/..." -ForegroundColor Yellow
-$audioSrc  = "$ROOT\Audio_Melo\MeloTTS"
-$audioDest = "$ROOT\Web_Build\audio"
-
-if (-not (Test-Path $audioSrc)) {
-    Write-Host "  [!!] KHONG TIM THAY: $audioSrc" -ForegroundColor Red
-    Write-Host "       Audio service se khong build duoc tren server!" -ForegroundColor Yellow
-} else {
-    # Giu lai Dockerfile va .dockerignore cua Web_Build/audio/ (da custom)
-    $keepDockerfile     = "$audioDest\Dockerfile"
-    $keepDockerignore   = "$audioDest\.dockerignore"
-    $tmpDockerfile      = "$env:TEMP\lc-audio-Dockerfile"
-    $tmpDockerignore    = "$env:TEMP\lc-audio-dockerignore"
-
-    # Backup Dockerfile va .dockerignore
-    if (Test-Path $keepDockerfile)   { Copy-Item $keepDockerfile $tmpDockerfile }
-    if (Test-Path $keepDockerignore) { Copy-Item $keepDockerignore $tmpDockerignore }
-
-    # Xoa noi dung cu (tru .git)
-    Get-ChildItem $audioDest -Exclude ".git" | Remove-Item -Recurse -Force
-
-    # Copy source MeloTTS (tru .git, .venv, __pycache__, *.egg-info)
-    $excludeDirs = @(".git", ".venv", "__pycache__", "melotts.egg-info", ".github", "docs", "test")
-    Get-ChildItem $audioSrc -Exclude $excludeDirs | ForEach-Object {
-        if ($_.PSIsContainer) {
-            if ($excludeDirs -notcontains $_.Name) {
-                Copy-Item -Recurse $_.FullName "$audioDest\$($_.Name)"
-            }
-        } else {
-            Copy-Item $_.FullName "$audioDest\$($_.Name)"
-        }
-    }
-
-    # Restore Dockerfile va .dockerignore (overwrite cai cua MeloTTS)
-    if (Test-Path $tmpDockerfile)   { Copy-Item $tmpDockerfile $keepDockerfile -Force }
-    if (Test-Path $tmpDockerignore) { Copy-Item $tmpDockerignore $keepDockerignore -Force }
-
-    # Cleanup temp
-    Remove-Item -Force $tmpDockerfile -ErrorAction SilentlyContinue
-    Remove-Item -Force $tmpDockerignore -ErrorAction SilentlyContinue
-
-    $audioFiles = (Get-ChildItem -Recurse $audioDest -File).Count
-    Write-Host "  => Audio source OK: $audioDest ($audioFiles files)" -ForegroundColor Green
-}
-
-# == 4. Kiem tra cac file config can thiet ==
-Write-Host "" -ForegroundColor Yellow
-Write-Host "[4/4] Kiem tra cau truc deploy..." -ForegroundColor Yellow
+Write-Host "[3/3] Kiem tra cau truc deploy..." -ForegroundColor Yellow
 
 $checkFiles = @(
     "$ROOT\Web_Build\docker-compose.prod.yaml",
@@ -132,10 +83,7 @@ $checkFiles = @(
     "$ROOT\Web_Build\deploy.sh",
     "$ROOT\Web_Build\frontend\Dockerfile.prod",
     "$ROOT\Web_Build\frontend\nginx.prod.conf",
-    "$ROOT\Web_Build\backend\Dockerfile",
-    "$ROOT\Web_Build\audio\Dockerfile",
-    "$ROOT\Web_Build\audio\setup.py",
-    "$ROOT\Web_Build\audio\melo\app.py"
+    "$ROOT\Web_Build\backend\Dockerfile"
 )
 
 $allOk = $true
@@ -174,7 +122,7 @@ Write-Host ""
 Write-Host "  Cau truc Web_Build:" -ForegroundColor White
 Write-Host '    frontend/build/  - Angular production output' -ForegroundColor Gray
 Write-Host '    backend/build/   - .NET publish output' -ForegroundColor Gray
-Write-Host '    audio/           - MeloTTS source + Dockerfile' -ForegroundColor Gray
+Write-Host '    audio_files/     - Thu muc chua audio files (dat thu cong)' -ForegroundColor Gray
 Write-Host ""
 Write-Host "  Buoc tiep theo:" -ForegroundColor White
 Write-Host "  1. Upload Web_Build len server:" -ForegroundColor Gray
@@ -185,7 +133,7 @@ Write-Host "     cd /opt/learnchinese/Web_Build" -ForegroundColor DarkGray
 Write-Host '     chmod +x deploy.sh' -ForegroundColor DarkGray
 Write-Host '     sudo ./deploy.sh' -ForegroundColor DarkGray
 Write-Host ""
-Write-Host "  3. Hoac chi update FE/BE (khong rebuild audio):" -ForegroundColor Gray
+Write-Host "  3. Hoac chi update FE/BE:" -ForegroundColor Gray
 Write-Host "     docker compose -f docker-compose.prod.yaml up -d --build frontend backend" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Cyan

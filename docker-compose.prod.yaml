@@ -55,7 +55,6 @@ services:
       AudioOptions__VocabulariesFolder: Vocabularies
       AudioOptions__ExamplesFolder: Examples
       AudioOptions__DefaultSpeed: "0.8"
-      AudioOptions__AudioServiceUrl: http://audio:8888
       Storage__RootPath: /app/uploads
       ContactStorage__RootPath: /app/uploads/contacts
     # Không expose port ra ngoài — chỉ truy cập qua nginx
@@ -93,22 +92,6 @@ services:
       - certbot_www:/var/www/certbot
     # Tự động renew mỗi 12 tiếng
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-
-  # ── Audio Generation Service (MeloTTS) ──
-  audio:
-    build:
-      context: ./audio
-      dockerfile: Dockerfile
-    container_name: lc-audio
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    # Không expose port ra ngoài
-    volumes:
-      - audio_data:/app/audio
 
 networks:
   lc-network:

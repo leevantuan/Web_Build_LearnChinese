@@ -54,7 +54,6 @@ services:
       AudioOptions__VocabulariesFolder: Vocabularies
       AudioOptions__ExamplesFolder: Examples
       AudioOptions__DefaultSpeed: "0.8"
-      AudioOptions__AudioServiceUrl: http://audio:8888
       Storage__RootPath: /app/uploads
       ContactStorage__RootPath: /app/uploads/contacts
     ports:
@@ -79,23 +78,6 @@ services:
       - backend
     ports:
       - "4200:80"
-
-  # ── Audio Generation Service (MeloTTS) ──
-  audio:
-    build:
-      context: ../Audio_Melo/MeloTTS
-      dockerfile: Dockerfile
-    container_name: lc-audio
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    ports:
-      - "8888:8888"
-    volumes:
-      - audio_data:/app/audio
 
 volumes:
   postgres_data:

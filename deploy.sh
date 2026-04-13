@@ -152,7 +152,7 @@ fi
 # ── Buoc 6: Build va chay Docker ──
 echo ""
 echo "[6/6] Build va khoi dong tat ca services..."
-echo ">> Lan dau se mat 10-20 phut (download images + build audio)..."
+echo ">> Build va khoi dong services (postgres + backend + frontend)..."
 echo ""
 docker compose -f docker-compose.prod.yaml up -d --build
 
